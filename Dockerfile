@@ -41,7 +41,7 @@ FROM paperspace/gradient-base:pt112-tf29-jax0314-py39-20220803
 
 
 # Ubuntu 20.04, CUDA Toolkit 11.2, CUDNN 8
-FROM nvidia/cuda:11.2.1-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:12.2.0-runtime-ubuntu20.04
 ENV LANG C.UTF-8
 
 # Setting shell to bash
