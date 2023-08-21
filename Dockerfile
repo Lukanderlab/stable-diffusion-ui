@@ -1,84 +1,94 @@
-FROM paperspace/gradient-base:pt112-tf29-jax0314-py39-20220803
+#!/bin/bash
 
+# Paperspace Dockerfile for Gradient base image
+# Paperspace image is located in Dockerhub registry: paperspace/gradient_base
 
 # ==================================================================
-# module list
+# Module list
 # ------------------------------------------------------------------
-# python                3.9.13  (apt)
-# jupyter               latest  (pip)
-# pytorch               latest  (pip)
-# tensorflow            latest  (pip)
-# jupyterlab            latest  (pip)
-# keras                 latest  (pip) # Comes installed with Tensorflow
-# opencv                4.5.1   (git)
-# numpy                 latest  (pip)
-# scipy                 latest  (pip)
-# pandas                latest  (pip)
-# cloudpickle           latest  (pip)
-# scikit-image          latest  (pip)
-# scikit-learn          latest  (pip)
-# matplotlib            latest  (pip)
-# ipython               latest  (pip)
-# ipykernel             latest  (pip)
-# ipywidgets            latest  (pip)
-# gradient              latest  (pip)
-# Cython                latest  (pip)
-# tqdm                  latest  (pip)
-# gdown                 latest  (pip)
-# xgboost               latest  (pip) 
-# pillow                latest  (pip)
-# seaborn               latest  (pip)
-# SQLAlchemy            latest  (pip)
-# spacy                 latest  (pip)
-# nltk                  latest  (pip)
-# jsonify               latest  (pip)
-# boto3                 latest  (pip)
-# transformers          latest  (pip)
-# sentence-transformers latest  (pip)
-# opencv-python         latest  (pip)
-# ==================================================================
+# python                3.9.15           (apt)
+# torch                 1.12.1           (pip)
+# torchvision           0.13.1           (pip)
+# torchaudio            0.12.1           (pip)
+# tensorflow            2.9.2            (pip)
+# jax                   0.3.23           (pip)
+# transformers          4.21.3           (pip)
+# datasets              2.4.0            (pip)
+# jupyterlab            3.4.6            (pip)
+# numpy                 1.23.4           (pip)
+# scipy                 1.9.2            (pip)
+# pandas                1.5.0            (pip)
+# cloudpickle           2.2.0            (pip)
+# scikit-image          0.19.3           (pip)
+# scikit-learn          1.1.2            (pip)
+# matplotlib            3.6.1            (pip)
+# ipython               8.5.0            (pip)
+# ipykernel             6.16.0           (pip)
+# ipywidgets            8.0.2            (pip)
+# cython                0.29.32          (pip)
+# tqdm                  4.64.1           (pip)
+# gdown                 4.5.1            (pip)
+# xgboost               1.6.2            (pip)
+# pillow                9.2.0            (pip)
+# seaborn               0.12.0           (pip)
+# sqlalchemy            1.4.41           (pip)
+# spacy                 3.4.1            (pip)
+# nltk                  3.7              (pip)
+# boto3                 1.24.90          (pip)
+# tabulate              0.9.0            (pip)
+# future                0.18.2           (pip)
+# gradient              2.0.6            (pip)
+# jsonify               0.5              (pip)
+# opencv-python         4.6.0.66         (pip)
+# sentence-transformers 2.2.2            (pip)
+# wandb                 0.13.4           (pip)
+# nodejs                16.x latest      (apt)
+# default-jre           latest           (apt)
+# default-jdk           latest           (apt)
 
-
-
-# Ubuntu 20.04, CUDA Toolkit 11.2, CUDNN 8
-FROM nvidia/cuda:12.2.0-runtime-ubuntu20.04
-ENV LANG C.UTF-8
-
-# Setting shell to bash
-ENV SHELL=/bin/bash
-SHELL ["/bin/bash", "-c"]
-
-RUN APT_INSTALL="apt-get install -y --no-install-recommends" && \
-    PIP_INSTALL="python3 -m pip --no-cache-dir install --upgrade" && \
-    GIT_CLONE="git clone --depth 10" && \
-
-    rm -rf /var/lib/apt/lists/* \
-           /etc/apt/sources.list.d/cuda.list \
-           /etc/apt/sources.list.d/nvidia-ml.list && \
-
-    apt-get update && \
 
 # ==================================================================
-# tools
+# Initial setup
 # ------------------------------------------------------------------
 
-    sed -e '\|/usr/share/man|s|^#*|#|g' -i /etc/dpkg/dpkg.cfg.d/excludes && \
+    # Ubuntu 20.04 as base image
+    FROM ubuntu:20.04
+    RUN yes| unminimize
 
-    DEBIAN_FRONTEND=noninteractive $APT_INSTALL \
-        build-essential \
+    # Set ENV variables
+    ENV LANG C.UTF-8
+    ENV SHELL=/bin/bash
+    ENV DEBIAN_FRONTEND=noninteractive
+
+    ENV APT_INSTALL="apt-get install -y --no-install-recommends"
+    ENV PIP_INSTALL="python3 -m pip --no-cache-dir install --upgrade"
+    ENV GIT_CLONE="git clone --depth 10"
+
+
+# ==================================================================
+# Tools
+# ------------------------------------------------------------------
+
+    RUN apt-get update && \
+        $APT_INSTALL \
         apt-utils \
+        gcc \
+        make \
+        pkg-config \
+        apt-transport-https \
+        build-essential \
         ca-certificates \
         wget \
         rsync \
         git \
         vim \
+        mlocate \
         libssl-dev \
         curl \
         openssh-client \
         unzip \
         unrar \
         zip \
-        awscli \
         csvkit \
         emacs \
         joe \
@@ -95,166 +105,180 @@ RUN APT_INSTALL="apt-get install -y --no-install-recommends" && \
         ffmpeg \
         libsm6 \
         libxext6 \
-        && \
-
-    rm -f /usr/bin/man && \
-    dpkg-divert --quiet --remove --rename /usr/bin/man && \
-    rm -f /usr/share/man/man1/sh.1.gz && \
-    dpkg-divert --quiet --remove --rename /usr/share/man/man1/sh.1.gz && \
-
-    $GIT_CLONE https://github.com/Kitware/CMake ~/cmake && \
-    cd ~/cmake && \
-    ./bootstrap && \
-    make -j"$(nproc)" install && \
+        libboost-all-dev \
+        cifs-utils \
+        software-properties-common
 
 
 # ==================================================================
 # Python
 # ------------------------------------------------------------------
 
-    # Installing python3.9
-    DEBIAN_FRONTEND=noninteractive \
-    $APT_INSTALL software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa -y && \
+    #Based on https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa
 
-    DEBIAN_FRONTEND=noninteractive $APT_INSTALL \
-    python3.9 \
-    python3.9-dev \
-    python3-distutils-extra \
-    && \
+    # Adding repository for python3.9
+    RUN add-apt-repository ppa:deadsnakes/ppa -y && \
+
+    # Installing python3.9
+        $APT_INSTALL \
+        python3.9 \
+        python3.9-dev \
+        python3.9-venv \
+        python3-distutils-extra
+
+    # Add symlink so python and python3 commands use same python3.9 executable
+    RUN ln -s /usr/bin/python3.9 /usr/local/bin/python3 && \
+        ln -s /usr/bin/python3.9 /usr/local/bin/python
 
     # Installing pip
-    wget -O ~/get-pip.py \
-    https://bootstrap.pypa.io/get-pip.py && \
-    python3.9 ~/get-pip.py && \
-
-    # Add symlink so python and python3 commands use same
-    # python3.9 executable
-    ln -s /usr/bin/python3.9 /usr/local/bin/python3 && \
-    ln -s /usr/bin/python3.9 /usr/local/bin/python && \
-
-    # Intalling Python packages
-    $PIP_INSTALL \
-        numpy \
-        scipy \
-        pandas \
-        cloudpickle \
-        scikit-image \
-        scikit-learn \
-        matplotlib \
-        ipython \
-        ipykernel \
-        ipywidgets \
-        gradient \
-        Cython \
-        tqdm \
-        gdown \
-        xgboost \ 
-        pillow \
-        seaborn \
-        SQLAlchemy \
-        spacy \
-        nltk \
-        jsonify \
-        boto3 \
-        transformers \
-        sentence-transformers \
-        datasets \
-        opencv-python \
-        && \
+    RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.9
+    ENV PATH=$PATH:/root/.local/bin
 
 
 # ==================================================================
-# boost
+# Installing CUDA packages (CUDA Toolkit 11.6.2 & CUDNN 8.4.1)
 # ------------------------------------------------------------------
 
-    DEBIAN_FRONTEND=noninteractive $APT_INSTALL \
-        libboost-all-dev \
-        && \
+    # Based on https://developer.nvidia.com/cuda-toolkit-archive
+    # Based on https://developer.nvidia.com/rdp/cudnn-archive
+    # Based on https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#package-manager-ubuntu-install
 
+    # Installing CUDA Toolkit
+    RUN wget https://developer.download.nvidia.com/compute/cuda/11.6.2/local_installers/cuda_11.6.2_510.47.03_linux.run && \
+        bash cuda_11.6.2_510.47.03_linux.run --silent --toolkit && \
+        rm cuda_11.6.2_510.47.03_linux.run
+    ENV PATH=$PATH:/usr/local/cuda-11.6/bin
+    ENV LD_LIBRARY_PATH=/usr/local/cuda-11.6/lib64
 
-# ==================================================================
-# jupyter
-# ------------------------------------------------------------------
-
-    $PIP_INSTALL \
-        jupyter \
-        && \
+    # Installing CUDNN
+    RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin && \
+        mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
+        apt-get install dirmngr -y && \
+        apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub && \
+        add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /" && \
+        apt-get update && \
+        apt-get install libcudnn8=8.4.1.*-1+cuda11.6 -y && \
+        apt-get install libcudnn8-dev=8.4.1.*-1+cuda11.6 -y && \
+        rm /etc/apt/preferences.d/cuda-repository-pin-600
 
 
 # ==================================================================
 # PyTorch
 # ------------------------------------------------------------------
 
-    $PIP_INSTALL torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116 && \
+    # Based on https://pytorch.org/get-started/locally/
+
+    RUN $PIP_INSTALL torch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu116 && \
         
+
+# ==================================================================
+# JAX
+# ------------------------------------------------------------------
+
+    # Based on https://github.com/google/jax#pip-installation-gpu-cuda
+
+    $PIP_INSTALL "jax[cuda11_cudnn82]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html && \
+    $PIP_INSTALL flax==0.6.3 && \
+
 
 # ==================================================================
 # TensorFlow
 # ------------------------------------------------------------------
 
-    # Based on https://www.tensorflow.org/install and 
-    # https://www.tensorflow.org/install/pip, so is now not -gpu
+    # Based on https://www.tensorflow.org/install/pip
 
-    $PIP_INSTALL \
-        tensorflow \
-        && \
+    $PIP_INSTALL tensorflow==2.9.2 && \
+
+
+# ==================================================================
+# Hugging Face
+# ------------------------------------------------------------------
+    
+    # Based on https://huggingface.co/docs/transformers/installation
+    # Based on https://huggingface.co/docs/datasets/installation
+
+    $PIP_INSTALL transformers==4.21.3 datasets==2.4.0 && \
 
 
 # ==================================================================
 # JupyterLab
 # ------------------------------------------------------------------
 
+    # Based on https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
+
+    $PIP_INSTALL jupyterlab==3.4.6 && \
+
+
+# ==================================================================
+# Additional Python Packages
+# ------------------------------------------------------------------
+
     $PIP_INSTALL \
-        jupyterlab \
-        && \
+        numpy==1.23.4 \
+        scipy==1.9.2 \
+        pandas==1.5.0 \
+        cloudpickle==2.2.0 \
+        scikit-image==0.19.3 \
+        scikit-learn==1.1.2 \
+        matplotlib==3.6.1 \
+        ipython==8.5.0 \
+        ipykernel==6.16.0 \
+        ipywidgets==8.0.2 \
+        cython==0.29.32 \
+        tqdm==4.64.1 \
+        gdown==4.5.1 \
+        xgboost==1.6.2 \
+        pillow==9.2.0 \
+        seaborn==0.12.0 \
+        sqlalchemy==1.4.41 \
+        spacy==3.4.1 \
+        nltk==3.7 \
+        boto3==1.24.90 \
+        tabulate==0.9.0 \
+        future==0.18.2 \
+        gradient==2.0.6 \
+        jsonify==0.5 \
+        opencv-python==4.6.0.66 \
+        sentence-transformers==2.2.2 \
+        wandb==0.13.4 \
+        awscli==1.25.91 \
+        jupyterlab-snippets==0.4.1 \
+        tornado==6.1
+
+
+# ==================================================================
+# Installing JRE and JDK
+# ------------------------------------------------------------------
+
+    RUN $APT_INSTALL \
+        default-jre \
+        default-jdk
+
+
+# ==================================================================
+# CMake
+# ------------------------------------------------------------------
+
+    RUN $GIT_CLONE https://github.com/Kitware/CMake ~/cmake && \
+        cd ~/cmake && \
+        ./bootstrap && \
+        make -j"$(nproc)" install
 
 
 # ==================================================================
 # Node.js and Jupyter Notebook Extensions
 # ------------------------------------------------------------------
 
-    curl -sL https://deb.nodesource.com/setup_16.x | bash && \
-    $APT_INSTALL nodejs && \
-    $PIP_INSTALL jupyter_contrib_nbextensions jupyterlab-git && \
-    jupyter contrib nbextension install --sys-prefix && \
-
-
-# ==================================================================
-# Conda
-# ------------------------------------------------------------------
-
-    # wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    # /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-
+    RUN curl -sL https://deb.nodesource.com/setup_16.x | bash  && \
+        $APT_INSTALL nodejs  && \
+        $PIP_INSTALL jupyter_contrib_nbextensions jupyterlab-git && \
+        jupyter contrib nbextension install --user
+                
 
 # ==================================================================
-# Config & Cleanup
+# Startup
 # ------------------------------------------------------------------
 
-    ldconfig && \
-    apt-get clean && \
-    apt-get autoremove && \
-    rm -rf /var/lib/apt/lists/* /tmp/* ~/*
+    EXPOSE 8888 6006
 
-RUN pip3 install --upgrade pip
-RUN git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui
-
-WORKDIR /stable-diffusion-webui
-
-## pip installs
-RUN pip install transformers scipy ftfy ipywidgets msgpack rich einops omegaconf pytorch_lightning basicsr optax facexlib realesrgan kornia imwatermark invisible-watermark piexif fonts font-roboto gradio
-RUN pip install git+https://github.com/crowsonkb/k-diffusion.git
-RUN pip install -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
-RUN pip install git+https://github.com/openai/CLIP.git
-RUN pip install diffusers
-
-RUN pip install -r requirements.txt
-RUN ls 
-RUN mkdir repositories
-RUN git clone https://github.com/CompVis/stable-diffusion /repositories/stable-diffusion
-RUN git clone https://github.com/TencentARC/GFPGAN.git /repositories/GFPGAN
-
-EXPOSE 8888
-
-CMD jupyter lab --allow-root --ip=0.0.0.0 --no-browser --port=8888 --ServerApp.trust_xheaders=True --ServerApp.disable_check_xsrf=False --ServerApp.allow_remote_access=True --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True
+    CMD jupyter lab --allow-root --ip=0.0.0.0 --no-browser --ServerApp.trust_xheaders=True --ServerApp.disable_check_xsrf=False --ServerApp.allow_remote_access=True --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True
