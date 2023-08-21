@@ -255,6 +255,6 @@ RUN mkdir repositories
 RUN git clone https://github.com/CompVis/stable-diffusion /repositories/stable-diffusion
 RUN git clone https://github.com/TencentARC/GFPGAN.git /repositories/GFPGAN
 
-EXPOSE 8889 8887
+EXPOSE 8888
 
-CMD jupyter lab --allow-root --ip=0.0.0.0 --no-browser --ServerApp.trust_xheaders=True --ServerApp.disable_check_xsrf=False --ServerApp.allow_remote_access=True --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True
+CMD jupyter lab --allow-root --ip=0.0.0.0 --no-browser --port=8888 --ServerApp.trust_xheaders=True --ServerApp.disable_check_xsrf=False --ServerApp.allow_remote_access=True --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True
